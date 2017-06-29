@@ -11,6 +11,17 @@ roadsCSVPath  = "Documents/Research/BARI/Geographic Infrastructure/Geographical 
 roadsShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Roads 2015/"
 roadsShpName = "roads_updated"
 
+blkShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Blocks/"
+blkShpName = "Blocks_Boston_2010_BARI"
+
+bgShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Block Groups 2015/"
+bgShpName = "Census Block Groups"
+
+ctShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Tracts/"
+ctShpName = "Tracts_Boston_2010_BARI"
+
+
+
 #---- OUTPUT PATHS ----
 permits2017_path = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Building Permits 2017/Permits.Records.2017.csv"
 
@@ -24,132 +35,25 @@ landParcels = read.csv(landParcels_path,stringsAsFactors=F)
 #---- ADDING GEOGRAPHICAL DATA BASED ON ID ----
 permits = standardizeGeoNames(permits)
 
-#connecting ID connector to geo data first, because connections based on parcel_num are better than those based on Land Parcel ID, this ensures that however we connect to the 
-# ID connector, we prefer these connections to the Geo - this is probably a very small thing in practice, but it was bugging me how to implement it
-IDconnector.geo = merge(IDconnector,properties[,c("parcel_num","X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")],by="parcel_num",all.x=T)
-IDconnector.geo = merge(IDconnector.geo,landParcels[,c("Land_Parcel_ID","X","Y","TLID_1","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")],by="Land_Parcel_ID",all.x=T)
-for (var in c("X","Y","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")) {
-  IDconnector.geo[,var] = ifelse(!is.na(IDconnector.geo[,paste(var,".x",sep="")]),IDconnector.geo[,paste(var,".x",sep="")],IDconnector.geo[,paste(var,".y",sep="")])
-  IDconnector.geo[,paste(var,".x",sep="")] = NULL
-  IDconnector.geo[,paste(var,".y",sep="")] = NULL
-}
-IDconnector.geo$TLID = ifelse(!is.na(IDconnector.geo$TLID),IDconnector.geo$TLID, IDconnector.geo$TLID_1 )
-IDconnector.geo$TLID_1  = NULL
-
-
-
-permits$Property_ID[ !is.na(permits$Property_ID) & permits$Property_ID == 0] = NA
-sum(is.na(permits$parcel_num) & is.na(permits$Property_ID))
-
-permits = merge(permits, IDconnector.geo[ !duplicated(IDconnector.geo$Property_ID) & !is.na(IDconnector.geo$Property_ID),],by = "Property_ID",all.x=T)
-permits = merge(permits, IDconnector.geo[ !duplicated(IDconnector.geo$parcel_num) & !is.na(IDconnector.geo$parcel_num),],by.x="parcel_num.x",by.y="parcel_num",all.x=T)
-for (var in c("Property_ID","parcel_num","GIS_ID","Land_Parcel_ID","X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")) {
-  permits[,var] = ifelse(!is.na(permits[,paste(var,".x",sep="")]),permits[,paste(var,".x",sep="")],permits[,paste(var,".y",sep="")])
-  permits[,paste(var,".x",sep="")] = NULL
-  permits[,paste(var,".y",sep="")] = NULL
-}
-
-# number that are missing geographic data
-sum(is.na(permits$X))
-sum(is.na(permits$BG_ID_10))
-sum(is.na(permits$CT_ID_10))
-
-#number that were not in the ID connector
-sum((!permits_b$Property_ID %in% IDconnector$Property_ID[ !is.na(IDconnector$Property_ID)]) & !permits_b$Parcel_ID %in% IDconnector$parcel_num)
-#View(permits[ is.na(permits$X),c("parcel_num","Property_ID")])
-
-
-#---- ADDING GEOGRAPHICAL DATA BASED ON GEOCODE ----
-permits.geocode = permits[ is.na(permits$X),]
-
 # first must clean
-temp = clean_address(permits.geocode$ADDRESS)
-permits.geocode$num1 = temp[,2]
-permits.geocode$num2 = temp[,3]
-permits.geocode$street_c = temp[,4]
-permits.geocode$suffix_c = temp[,5]
+temp = clean_address(permits$ADDRESS)
+permits$num1 = temp[,2]
+permits$num2 = temp[,3]
+permits$street_c = temp[,4]
+permits$suffix_c = temp[,5]
 rm(temp)
-permits.geocode$city_c=clean_city(permits.geocode$CITY)
-permits.geocode$zip_c= clean_zip(permits.geocode$ZIP)
-temp = str_match(permits.geocode$Location,"\\(([0-9-.]*), ([0-9-.]*)\\)")
-permits.geocode$X = as.numeric(temp[,3])
-permits.geocode$Y = as.numeric(temp[,2])
+permits$city_c=clean_city(permits$CITY)
+permits$zip_c= clean_zip(permits$ZIP)
+temp = str_match(permits$Location,"\\(([0-9-.]*), ([0-9-.]*)\\)")
+permits$lng = as.numeric(temp[,3])
+permits$lat = as.numeric(temp[,2])
 rm(temp)
-permits.geocode.shp = permits.geocode[ !is.na(permits.geocode$X),]
-coordinates(permits.geocode.shp) = ~X+Y 
-proj4string(permits.geocode.shp) = latLongProj
 
 
-
-
-# geocode against land parcels, without geographic data
-geocoded = data.frame(
-  geocode(toGeocode = permits.geocode[ !duplicated(permits.geocode$PermitNumber),],tgID = "PermitNumber",refName = "LandParcels",smallestGeo = "Land_Parcel_ID",
-          geographies = c("X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD"),
-          refCSVPath = landParcels_path)[1],
-  stringsAsFactors=F)
-geocoded = geocoded[apply(geocoded[,c("Land_Parcel_ID","X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")],1,function(x)any(!is.na(x))),]
-
-#geocode against land parcels, with geographic data
-geocoded.geo = data.frame(
-  geocode(toGeocode = permits.geocode.shp[ !duplicated(permits.geocode.shp@data$PermitNumber),],tgID = "PermitNumber",refName = "landParcels",smallestGeo = "Land_Parcel_ID",
-          geographies = c("X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD"),xy=T,
-          refShpPath = landParcelsShpPath,
-          refShpName = landParcelsShpName,
-          refCSVPath = landParcels_path)[1],
-  stringsAsFactors=F)
-#combine them
-#geocoded.geo = merge(geocoded.geo[,c("PermitNumber","Land_Parcel_ID")], landParcels[,c("Land_Parcel_ID","X","Y","TLID_1","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")],by="Land_Parcel_ID",all.x=T)
-#geocoded.geo = rename(geocoded.geo, TLID = TLID_1)
-geocoded = merge(geocoded[,c("PermitNumber","Land_Parcel_ID","X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")], 
-                 geocoded.geo[,c("PermitNumber","Land_Parcel_ID","X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")], by="PermitNumber",all=T)
-for (var in c("Land_Parcel_ID","X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")) {
-  geocoded[,var] = ifelse(!is.na(geocoded[,paste(var,".x",sep="")]),geocoded[,paste(var,".x",sep="")],geocoded[,paste(var,".y",sep="")])
-  geocoded[,paste(var,".x",sep="")] = NULL
-  geocoded[,paste(var,".y",sep="")] = NULL
-}
-
-# geocode against streets, without geographic data
-geocoded2 = data.frame(
-  geocode(toGeocode = permits.geocode[ !duplicated(permits.geocode$PermitNumber),],tgID = "PermitNumber",refName = "Roads",smallestGeo = "TLID",
-          geographies = c("BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD"), 
-          refCSVPath = roadsCSVPath)[1],
-  stringsAsFactors=F)
-geocoded2 = geocoded2[apply(geocoded2[,c(c("TLID","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD"))],1,function(x)any(!is.na(x))),]
-
-# geocode against streets, with geographic data
-geocoded.geo2 = data.frame(
-  geocode(toGeocode = permits.geocode.shp[ !duplicated(permits.geocode.shp@data$PermitNumber),],tgID = "PermitNumber",refName = "Roads",
-          smallestGeo = "TLID",geographies = c("BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD"),xy=T,
-          refShpPath = roadsShpPath,
-          refShpName = roadsShpName,
-          refCSVPath = roadsCSVPath)[1],
-  stringsAsFactors=F)
-
-
-geocoded2 = merge(geocoded2[,c("PermitNumber","TLID","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")], geocoded.geo2[,c("PermitNumber","TLID","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")], by="PermitNumber",all=T)
-for (var in c("TLID","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")) {
-  geocoded2[,var] = ifelse(!is.na(geocoded2[,paste(var,".x",sep="")]),geocoded2[,paste(var,".x",sep="")],geocoded2[,paste(var,".y",sep="")])
-  geocoded2[,paste(var,".x",sep="")] = NULL
-  geocoded2[,paste(var,".y",sep="")] = NULL
-}
-
-
-# Now add on the geographic data, first based on land parcels, then based on roads
-permits = merge(permits,geocoded,by="PermitNumber",all.x=T)
-for (var in c("Land_Parcel_ID","X","Y","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")) {
-  permits[,var] = ifelse(!is.na(permits[,paste(var,".x",sep="")]),permits[,paste(var,".x",sep="")],permits[,paste(var,".y",sep="")])
-  permits[,paste(var,".x",sep="")] = NULL
-  permits[,paste(var,".y",sep="")] = NULL
-}
-
-permits = merge(permits,geocoded2,by="PermitNumber",all.x=T)
-for (var in c("TLID","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD")) {
-  permits[,var] = ifelse(!is.na(permits[,paste(var,".x",sep="")]),permits[,paste(var,".x",sep="")],permits[,paste(var,".y",sep="")])
-  permits[,paste(var,".x",sep="")] = NULL
-  permits[,paste(var,".y",sep="")] = NULL
-}
-
+permits_PIGI = placeInGI(df=permits,IDConnectorPath = ID_walkover_path,fuzzyMatching = F,
+                    landParcelsPath = landParcels_path,landParcelsShpName = landParcelsShpName,landParcelsShpPath=landParcelsShpPath,
+                    roadsPath = roadsCSVPath,roadsShpPath = roadsShpPath,roadsShpName = roadsShpName,
+                    blkShpPath =blkShpPath,blkShpName=blkShpName,bgShpPath=bgShpPath,bgShpName=bgShpName,ctShpPath=ctShpPath,ctShpName=ctShpName )
 
 sum(is.na(permits$X))
 sum(!is.na(permits$X))/nrow(permits)
@@ -173,20 +77,25 @@ sum(!is.na(permits$CT_ID_10))/nrow(permits)
 permits = permits
 permits$PermitTypeDescr = trim(str_replace_all(permits$PermitTypeDescr,"\xe4\xf3\xf1",""))
 
+
+
+NEWCON = (!is.na(permits$DESCRIPTION) & 
+            (permits$DESCRIPTION=="Excavation Borings Test Pits" | 
+               permits$DESCRIPTION == "New construction" | 
+               permits$DESCRIPTION == "Erect" | 
+               permits$DESCRIPTION == "New construction")) | 
+  (!is.na(permits$PermitTypeDescr) & 
+     (permits$PermitTypeDescr=="Erect/New Construction" |
+        permits$PermitTypeDescr == "Driveway Excavation Permit" | 
+        permits$PermitTypeDescr == "Emergency Excavation Permit" | 
+        permits$PermitTypeDescr == "Excavation Permit" | 
+        permits$PermitTypeDescr == "Foundation Permit"))
+
 DEMO = (!is.na(permits$DESCRIPTION) & 
           (permits$DESCRIPTION =="Demolition - Exterior" | permits$DESCRIPTION=="Demolition - Interior")) |  
        (!is.na(permits$PermitTypeDescr) & 
           permits$PermitTypeDescr== "BFD Construction  Demo  Reno" )
 
-NEWCON = (!is.na(permits$DESCRIPTION) & 
-             (permits$DESCRIPTION=="Excavation Borings Test Pits" | 
-             permits$DESCRIPTION == "New construction" )) | 
-          (!is.na(permits$PermitTypeDescr) & 
-             (permits$PermitTypeDescr=="Erect/New Construction" |
-             permits$PermitTypeDescr == "Driveway Excavation Permit" | 
-             permits$PermitTypeDescr == "Emergency Excavation Permit" | 
-             permits$PermitTypeDescr == "Excavation Permit" | 
-             permits$PermitTypeDescr == "Foundation Permit"))
 
 ADD = (!is.na(permits$DESCRIPTION) & 
          (permits$DESCRIPTION == "Addition")) | 
@@ -239,22 +148,87 @@ permits$reno<-ifelse(!NEWCON & !DEMO & !ADD & RENO, 1,0)
 permits$specialevents<-ifelse(permits$PermitTypeDescr== "BFD Special Effects/Fireworks" | permits$PermitTypeDescr== "BFD General Permit" | permits$PermitTypeDescr== "Public Event" | permits$PermitTypeDescr== "BFDTemporary Place of Assembly" | permits$PermitTypeDescr== "BFD Tent with Assembly" | permits$PermitTypeDescr== "Use of Premises" | permits$PermitTypeDescr== "BFD Abandon Undergrd Storage" | permits$PermitTypeDescr== "BFD Alter Stationary Portable" |  permits$PermitTypeDescr== "BFD Blasting Permit" |  permits$PermitTypeDescr== "BFD Maintain Undergrd Storage" | permits$PermitTypeDescr== "BFD Temporary Out of Services" | permits$PermitTypeDescr== " BFD Use of Candles in a Place" | permits$PermitTypeDescr== "Certificate of Compliance", 1,0)
 
 #owner var
-permits$OWNER<-toupper(permits$OWNER)
+permits$OWNER<-toupper(trim(permits$OWNER)
 
 ##“Upper Education” Variable
-permits$uppereducation<-ifelse(permits$OWNER== "ART INSTITUTE O" | permits$OWNER== "THE NORTHEASTER" | permits$OWNER== "ART INSTITUTE OF BOSTON" | permits$OWNER== "BARNES & NOBEL-BOSTON UNIVERSITY" | permits$OWNER== "BOSTON ARCHITEC" | permits$OWNER== "BOSTON ARCHITECT COLLEGE" | permits$OWNER== "BOSTON COLLEGE " | permits$OWNER== "BOSTON COLLEGE PURCHASING DEPT" | permits$OWNER== "BOSTON UNIVERSI" | permits$OWNER== "BOSTON UNIVERSITY TRSTS" | permits$OWNER== "BOSTON UNIVERSITY TRSTS OF" | permits$OWNER== "BOSTON UNIVRSTY TRSTS OF" | permits$OWNER== "BOSTON UNV PHYSICAL PLANT" | permits$OWNER== "EMMANUEL COLLEG" | permits$OWNER== "HARVARD CLUB OF" | permits$OWNER== "HARVARD COLL PR" | permits$OWNER== "HARVARD COLLEGE" | permits$OWNER== "HARVARD COLLEGE PRES/FELLOWS" | permits$OWNER== "HARVARD UNIV/FAC MAINT OPERATI" | permits$OWNER== "NORTHEASTERN CONFERENCE CORP" | permits$OWNER== "NORTHEASTERN UNIV HILLEL" | permits$OWNER== "NORTHEASTERN UNIV MASS" | permits$OWNER== "NORTHEASTERN UNIVERSITY" | permits$OWNER== "SUFFOLK UNIVERS" | permits$OWNER== "WENTWORTH INSTI" | permits$OWNER== "WENTWORTH INSTITUTE" | permits$OWNER== "WENTWORTH INSTITUTE OF" | permits$OWNER== "WENTWORTH INSTITUTE OF TECH" | permits$OWNER== "WENTWOWORTH INS" | permits$OWNER== "WHEELOCK COLLEG" | permits$OWNER== "WHEELOCK COLLEGE" | permits$OWNER== "MODERN SCHOOL OF FASHION" | permits$OWNER== "N.E. COLLEGE OF OPTOMETRY" | permits$OWNER== "NEW ENG CONSERV" | permits$OWNER== "New England College of Optometry" | permits$OWNER== "SIMMONS COLLEGE" | permits$OWNER== "HARVARD RE SERV ATTN ACCT PAY" | permits$OWNER== "HARVARD REAL ES" | permits$OWNER== "HARVARD REAL ESTATE", 1,0)
+permits$uppereducation<-ifelse(permits$OWNER== "ART INSTITUTE O" | permits$OWNER== "THE NORTHEASTER" | permits$OWNER== "ART INSTITUTE OF BOSTON" | permits$OWNER== "BARNES & NOBEL-BOSTON UNIVERSITY" | permits$OWNER== "BOSTON ARCHITEC" | permits$OWNER== "BOSTON ARCHITECT COLLEGE" | permits$OWNER== "BOSTON COLLEGE" | permits$OWNER== "BOSTON COLLEGE PURCHASING DEPT" | permits$OWNER== "BOSTON UNIVERSI" | permits$OWNER== "BOSTON UNIVERSITY TRSTS" | permits$OWNER== "BOSTON UNIVERSITY TRSTS OF" | permits$OWNER== "BOSTON UNIVRSTY TRSTS OF" | permits$OWNER== "BOSTON UNV PHYSICAL PLANT" | permits$OWNER== "EMMANUEL COLLEG" | permits$OWNER== "HARVARD CLUB OF" | permits$OWNER== "HARVARD COLL PR" | permits$OWNER== "HARVARD COLLEGE" | permits$OWNER== "HARVARD COLLEGE PRES/FELLOWS" | permits$OWNER== "HARVARD UNIV/FAC MAINT OPERATI" | permits$OWNER== "NORTHEASTERN CONFERENCE CORP" | permits$OWNER== "NORTHEASTERN UNIV HILLEL" | permits$OWNER== "NORTHEASTERN UNIV MASS" | permits$OWNER== "NORTHEASTERN UNIVERSITY" | permits$OWNER== "SUFFOLK UNIVERS" | permits$OWNER== "WENTWORTH INSTI" | permits$OWNER== "WENTWORTH INSTITUTE" | permits$OWNER== "WENTWORTH INSTITUTE OF" | permits$OWNER== "WENTWORTH INSTITUTE OF TECH" | permits$OWNER== "WENTWOWORTH INS" | permits$OWNER== "WHEELOCK COLLEG" | permits$OWNER== "WHEELOCK COLLEGE" | permits$OWNER== "MODERN SCHOOL OF FASHION" | permits$OWNER== "N.E. COLLEGE OF OPTOMETRY" | permits$OWNER== "NEW ENG CONSERV" | permits$OWNER== "NEW ENGLAND COLLEGE OF OPTOMETRY" | permits$OWNER== "SIMMONS COLLEGE" | permits$OWNER== "HARVARD RE SERV ATTN ACCT PAY" | permits$OWNER== "HARVARD REAL ES" | permits$OWNER== "HARVARD REAL ESTATE", 1,0)
 
 ##“Healthcare” Variable
-permits$healthcare<-ifelse(permits$OWNER== "CHILDREN'S HOSP" | permits$OWNER== "N E BAPTIST HOS" | permits$OWNER== "B'NAI B'RITH SR CITIZENS" | permits$OWNER== "CHILDRENS HOSPI" | permits$OWNER== "CHILDRENS HOSPITAL" | permits$OWNER== "ASIAN HEALTH CARE FOUNDATION" | permits$OWNER== "BETH ISRAEL DEA" | permits$OWNER== "BETH ISRAEL HOSPITAL" | permits$OWNER== "BRIGHAM  MEDICA" | permits$OWNER== "BRIGHAM & WOMEN'S HOSPITAL" | permits$OWNER== "BRIGHAM CIRCLE" | permits$OWNER== "BRIGHAM CIRCLE REALTY" | permits$OWNER== "BRIGHAM MEDICAL" | permits$OWNER== "EAST BOSTON HEALTH CENTER" | permits$OWNER== "PARTNERS HEALTHCARE SYSTEM MGH" | permits$OWNER== "UNIV HOSPITAL I" | permits$OWNER== "UNIVERSITY HOSP" | permits$OWNER== "UNIVERSITY OF MASS MEDICAL CTR" | permits$OWNER== "BOSTONIAN NURSING CARE" | permits$OWNER== "DEACONESS HOSPI" | permits$OWNER== "NEW ENGLAND DEA" | permits$OWNER== "NEW ENGLAND MED CTR HOSP" | permits$OWNER== "RIVERSIDE NURSING HOME" | permits$OWNER== "SPAULDING REHAB" | permits$OWNER== "ST ELIZABETH'S " | permits$OWNER== "ST ELIZABETHS HOSP OF BOS" | permits$OWNER== "NEWBURY DENTAL ASSC.REALTY TR" | permits$OWNER== "RUGGLES ASSISTED LIVING LP" | permits$OWNER== "MEDICAL AREA TO" | permits$OWNER== "SO. COVE NURSING INC" | permits$OWNER== "BROOKS PHARMACY", 1,0)
+permits$healthcare<-ifelse(permits$OWNER== "CHILDREN'S HOSP" | permits$OWNER== "N E BAPTIST HOS" | permits$OWNER== "B'NAI B'RITH SR CITIZENS" | permits$OWNER== "CHILDRENS HOSPI" | permits$OWNER== "CHILDRENS HOSPITAL" | permits$OWNER== "ASIAN HEALTH CARE FOUNDATION" | permits$OWNER== "BETH ISRAEL DEA" | permits$OWNER== "BETH ISRAEL HOSPITAL" | permits$OWNER== "BRIGHAM  MEDICA" | permits$OWNER== "BRIGHAM & WOMEN'S HOSPITAL" | permits$OWNER== "BRIGHAM CIRCLE" | permits$OWNER== "BRIGHAM CIRCLE REALTY" | permits$OWNER== "BRIGHAM MEDICAL" | permits$OWNER== "EAST BOSTON HEALTH CENTER" | permits$OWNER== "PARTNERS HEALTHCARE SYSTEM MGH" | permits$OWNER== "UNIV HOSPITAL I" | permits$OWNER== "UNIVERSITY HOSP" | permits$OWNER== "UNIVERSITY OF MASS MEDICAL CTR" | permits$OWNER== "BOSTONIAN NURSING CARE" | permits$OWNER== "DEACONESS HOSPI" | permits$OWNER== "NEW ENGLAND DEA" | permits$OWNER== "NEW ENGLAND MED CTR HOSP" | permits$OWNER== "RIVERSIDE NURSING HOME" | permits$OWNER== "SPAULDING REHAB" | permits$OWNER== "ST ELIZABETH'S" | permits$OWNER== "ST ELIZABETHS HOSP OF BOS" | permits$OWNER== "NEWBURY DENTAL ASSC.REALTY TR" | permits$OWNER== "RUGGLES ASSISTED LIVING LP" | permits$OWNER== "MEDICAL AREA TO" | permits$OWNER== "SO. COVE NURSING INC" | permits$OWNER== "BROOKS PHARMACY", 1,0)
 
 ##“Religious Institutions” Variable
-permits$religious<-ifelse(permits$OWNER== " BETHEL BAPTIST " | permits$OWNER== " BETHEL TABERNAC" | permits$OWNER== "BETHEL TABERNACLE" | permits$OWNER== "BETHESDA HAITIAN BAPTIST CHURCH" | permits$OWNER== "BI DEACONESS ME" | permits$OWNER== "BOSTON CHINESE EVANGELICAL" | permits$OWNER== "CH OF THE HOLY" | permits$OWNER== "CHRIST APOSTOLIC MT JOY" | permits$OWNER== "CHRIST CHURCH I" | permits$OWNER== "CHRIST TABERNACLE CHURCH" | permits$OWNER== "CHRISTO TRUST" | permits$OWNER== "CHURCH CHRIST OF SCIENCE" | permits$OWNER== "CHURCH COURT CO" | permits$OWNER== "CHURCH OF SCIENTOLOGY" | permits$OWNER== "CHURCH OF THE C" | permits$OWNER== "EMMANUEL CHURCH" | permits$OWNER== "CONCORD BAPTIST" | permits$OWNER== "DORCH TEMPLE BAPTIST CHURCH" | permits$OWNER== "EBENEZER BAPTIS" | permits$OWNER== "EBENEZER BAPTIST CH" | permits$OWNER== "EMMANUEL GOSPEL CENTER INC" | permits$OWNER== "EMPIRE OF HOLY " | permits$OWNER== "EPIS CITY MISSION" | permits$OWNER== "FIRST BAPT CHUR" | permits$OWNER== "GLADTIDINGS PENTECOSTAL CHURCH" | permits$OWNER== "GREEK ORTHODOX " | permits$OWNER== "HOLY ORDER OF M" | permits$OWNER== "HOLY ORDER OF MANS" | permits$OWNER== "HOLY TRINITY CHURCH" | permits$OWNER== "J.P. TRINITY LATVEANS LUTH CH" | permits$OWNER== "KING'S CHAPEL HOUSE" | permits$OWNER== "MACEDONIA MISS BAP CHURCH" | permits$OWNER== "MATTAPAN CHURCH" | permits$OWNER== "MOUNT CALVARY HOLY CHURCH" | permits$OWNER== "MOUNT OLIVE TEM" | permits$OWNER== "N E CON 7TH DAY ADV" | permits$OWNER== "NEW ENGLAND BAP" | permits$OWNER== "OUR LADY OF GOOD VOYAGE CHAPEL" | permits$OWNER== "OUR LADY OF THE CEDAR CHURCH" | permits$OWNER== "OUR SAVIOUR'S LUTHERAN CHURCH" | permits$OWNER== "PARISH OF CHRIS" | permits$OWNER== "PARK STREET CHURCH" | permits$OWNER== "PRAYER ROOM PENTECOST CHURCH" | permits$OWNER== "PRAYER TOWER AP" | permits$OWNER== "PRAYER TOWER APOSTOLIC" | permits$OWNER== "ROMAN CATH ARCH" | permits$OWNER== "ROMAN CATH ARCHBISHOP" | permits$OWNER== "SHAWMUT COMMUNITY CHURCH" | permits$OWNER== "SHAWMUT CONGREG" | permits$OWNER== "SISTERS OF NOTR" | permits$OWNER== "SISTERS OF NOTRE DAME" | permits$OWNER== "SISTERS OF SAIN" | permits$OWNER== "SOC FOR ISLAMIC BROTHERHOOD IN" | permits$OWNER== "SONS OF DIVINE PROV INC" | permits$OWNER== "ST ANNE CHURCH" | permits$OWNER== "ST CYPRIANS CHU" | permits$OWNER== "ST GEORGE ORTHODOX CHURCH / BOSTON" | permits$OWNER== "ST LEONARD'S CHURCH" | permits$OWNER== "ST LUKES AND STMGRTS CHURCH" | permits$OWNER== "ST MONICA'S CHURCH" | permits$OWNER== "ST THOMAS AQUINAS CHURCH" | permits$OWNER== "Temple Bnai Moshe" | permits$OWNER== "BEREA SEVENTH DAY ADVENT" | permits$OWNER== "GREATER LOVE TABERNACLE" | permits$OWNER== "SOC JESUS OF NE" | permits$OWNER== "SOCIETY FOR ISL" | permits$OWNER== "THE CHRISTIAN ASSEM OF ROSLINDALE" | permits$OWNER== "UNITED PRESBYTE" | permits$OWNER== "MT CALVARY HOLY ASSEMBLY #1" | permits$OWNER== "THE MARIST FATHERS" | permits$OWNER== "UNIT UNIVERSALIST ASSOC" | permits$OWNER== "DAUGHTERS OF ST" | permits$OWNER== "ST JAMES ED CENTER" | permits$OWNER== "ST JOSEPH COMMUNITY INC" | permits$OWNER== "UNITARIAN UNIVE", 1,0)
+permits$religious<-ifelse(permits$OWNER== "BETHEL BAPTIST" | permits$OWNER== "BETHEL TABERNAC" | permits$OWNER== "BETHEL TABERNACLE" | permits$OWNER== "BETHESDA HAITIAN BAPTIST CHURCH" | permits$OWNER== "BI DEACONESS ME" | permits$OWNER== "BOSTON CHINESE EVANGELICAL" | permits$OWNER== "CH OF THE HOLY" | permits$OWNER== "CHRIST APOSTOLIC MT JOY" | permits$OWNER== "CHRIST CHURCH I" | permits$OWNER== "CHRIST TABERNACLE CHURCH" | permits$OWNER== "CHRISTO TRUST" | permits$OWNER== "CHURCH CHRIST OF SCIENCE" | permits$OWNER== "CHURCH COURT CO" | permits$OWNER== "CHURCH OF SCIENTOLOGY" | permits$OWNER== "CHURCH OF THE C" | permits$OWNER== "EMMANUEL CHURCH" | permits$OWNER== "CONCORD BAPTIST" | permits$OWNER== "DORCH TEMPLE BAPTIST CHURCH" | permits$OWNER== "EBENEZER BAPTIS" | permits$OWNER== "EBENEZER BAPTIST CH" | permits$OWNER== "EMMANUEL GOSPEL CENTER INC" | permits$OWNER== "EMPIRE OF HOLY" | permits$OWNER== "EPIS CITY MISSION" | permits$OWNER== "FIRST BAPT CHUR" | permits$OWNER== "GLADTIDINGS PENTECOSTAL CHURCH" | permits$OWNER== "GREEK ORTHODOX" | permits$OWNER== "HOLY ORDER OF M" | permits$OWNER== "HOLY ORDER OF MANS" | permits$OWNER== "HOLY TRINITY CHURCH" | permits$OWNER== "J.P. TRINITY LATVEANS LUTH CH" | permits$OWNER== "KING'S CHAPEL HOUSE" | permits$OWNER== "MACEDONIA MISS BAP CHURCH" | permits$OWNER== "MATTAPAN CHURCH" | permits$OWNER== "MOUNT CALVARY HOLY CHURCH" | permits$OWNER== "MOUNT OLIVE TEM" | permits$OWNER== "N E CON 7TH DAY ADV" | permits$OWNER== "NEW ENGLAND BAP" | permits$OWNER== "OUR LADY OF GOOD VOYAGE CHAPEL" | permits$OWNER== "OUR LADY OF THE CEDAR CHURCH" | permits$OWNER== "OUR SAVIOUR'S LUTHERAN CHURCH" | permits$OWNER== "PARISH OF CHRIS" | permits$OWNER== "PARK STREET CHURCH" | permits$OWNER== "PRAYER ROOM PENTECOST CHURCH" | permits$OWNER== "PRAYER TOWER AP" | permits$OWNER== "PRAYER TOWER APOSTOLIC" | permits$OWNER== "ROMAN CATH ARCH" | permits$OWNER== "ROMAN CATH ARCHBISHOP" | permits$OWNER== "SHAWMUT COMMUNITY CHURCH" | permits$OWNER== "SHAWMUT CONGREG" | permits$OWNER== "SISTERS OF NOTR" | permits$OWNER== "SISTERS OF NOTRE DAME" | permits$OWNER== "SISTERS OF SAIN" | permits$OWNER== "SOC FOR ISLAMIC BROTHERHOOD IN" | permits$OWNER== "SONS OF DIVINE PROV INC" | permits$OWNER== "ST ANNE CHURCH" | permits$OWNER== "ST CYPRIANS CHU" | permits$OWNER== "ST GEORGE ORTHODOX CHURCH / BOSTON" | permits$OWNER== "ST LEONARD'S CHURCH" | permits$OWNER== "ST LUKES AND STMGRTS CHURCH" | permits$OWNER== "ST MONICA'S CHURCH" | permits$OWNER== "ST THOMAS AQUINAS CHURCH" | permits$OWNER== "TEMPLE BNAI MOSHE" | permits$OWNER== "BEREA SEVENTH DAY ADVENT" | permits$OWNER== "GREATER LOVE TABERNACLE" | permits$OWNER== "SOC JESUS OF NE" | permits$OWNER== "SOCIETY FOR ISL" | permits$OWNER== "THE CHRISTIAN ASSEM OF ROSLINDALE" | permits$OWNER== "UNITED PRESBYTE" | permits$OWNER== "MT CALVARY HOLY ASSEMBLY #1" | permits$OWNER== "THE MARIST FATHERS" | permits$OWNER== "UNIT UNIVERSALIST ASSOC" | permits$OWNER== "DAUGHTERS OF ST" | permits$OWNER== "ST JAMES ED CENTER" | permits$OWNER== "ST JOSEPH COMMUNITY INC" | permits$OWNER== "UNITARIAN UNIVE", 1,0)
 
 ##“Government” Variable
-permits$government<-ifelse(permits$OWNER== "BOSTON DEVELOPMENT" | permits$OWNER== "Boston fire department" | permits$OWNER== "BOSTON HOUSING" | permits$OWNER== "BOSTON HOUSING " | permits$OWNER== "Boston Housing Authority" | permits$OWNER== "BOSTON MUNRCIPA" | permits$OWNER== "Boston Police Department" | permits$OWNER== "BOSTON PORT * S" | permits$OWNER== "BOSTON PUBLIC HEALTH COMM" | permits$OWNER== "BOSTON REDEVELO" | permits$OWNER== "BOSTON REDEVELOPMENT AUTH" | permits$OWNER== "BOSTON REDEVELP" | permits$OWNER== "CITY OF BOSTON" | permits$OWNER== "CITY OF BOSTON - DND" | permits$OWNER== "CITY OF BOSTON - PUB FAC " | permits$OWNER== "CITY OF BOSTON (REO)" | permits$OWNER== "CITY OF BOSTON BY FCL" | permits$OWNER== "CITY OF BOSTON PROP MGMT DEPT" | permits$OWNER== "CITY OF BOSTON-GEORGE WHITE FUND" | permits$OWNER== "COMMONWLTH OF M" | permits$OWNER== "COMMWLTH OF MAS" | permits$OWNER== "M B T A" | permits$OWNER== "MASS BAY TRANSP" | permits$OWNER== "MASS BAY TRANSPORTATION AUTH" | permits$OWNER== "MASS PORT AUTHO" | permits$OWNER== "MASS PORT AUTHORITY" | permits$OWNER== "MASS TURNPIKE A" | permits$OWNER== "MASS TURNPIKE AUTHORITY" | permits$OWNER== "MASSACHUSETTS BAY TRANS AUTH" | permits$OWNER== "MASSACHUSETTS PORT AUTHORITY" | permits$OWNER== "MASSPORT AUTHOR" | permits$OWNER== "MBTA" | permits$OWNER== "MSS PORT AUTHOR" | permits$OWNER== "COMMMONWEALTH O" | permits$OWNER== "COMMONWEALTH FL" | permits$OWNER== "COMMONWEALTH OF" | permits$OWNER== "UNITED STATES OF AMER" | permits$OWNER== "FEDERAL HOME LOAN MORTGAGE" | permits$OWNER== "FEDERAL HOME LOAN MTG CORP" | permits$OWNER== "FEDERAL MORTGAGE ASSOC" | permits$OWNER== "FEDERAL NATIONAL MORTGAGE ASSO" | permits$OWNER== "FEDERAL NATIONAL MTG ASSOC", 1,0)
+permits$government = ifelse(permits$OWNER == "CITY OF BOSTON" |
+                          permits$OWNER == "BOSTON REDEVELOPMNT AUTH" |
+                          permits$OWNER == "BOSTON REDEVELOPMENT AUTH" |
+                          permits$OWNER == "BOSTON REDEVELOPMENT" |
+                          permits$OWNER == "BOSTON HOUSING AUTHORITY" |
+                          permits$OWNER == "BOSTON HOUSING AUTH" |
+                          permits$OWNER == "BOSTON POLICE POST 1018 VFW" |
+                          permits$OWNER == "CITY OF BOSTON SCHOOL DEPT" |
+                          permits$OWNER == "CITY OF BOSTON PUBLIC HEALTH" |
+                          permits$OWNER == "CITY OF BOSTON SCHOOL DEPT" |
+                          permits$OWNER == "CITY OF BOSTON BY FCL" |
+                          permits$OWNER == "CITY OF BOSTON PUB FACIL" |
+                          permits$OWNER == "BOSTON REDEVLOPMENT AUTHORIT" |
+                          permits$OWNER == "BOSTON POLICE DETECTIVE" |
+                          permits$OWNER == "CITY OF BOSTON PARKS" |
+                          permits$OWNER == "BOSTON REDEVELOP AUTHORITY" |
+                          permits$OWNER == "CITY OF BOSTON PARKS AND" |
+                          permits$OWNER == "THE BOSTON REDEVELOPMENT" |
+                          permits$OWNER == "BOSTON REDEVOPMENT AUTH" |
+                          permits$OWNER == "BOSTON REDEVLPMNT AUTHOR" |
+                          permits$OWNER == "BOSTON REDEVLOPMENT AUTHOR" |
+                          permits$OWNER == "MBTA" |
+                          permits$OWNER == "BOSTON PUBLIC HEALTH COMM" |
+                          permits$OWNER == "CITY OF BOSTON PUBLIC HEALTH" |
+                          permits$OWNER == "CITY OB BOSTON PUBLIC HEALTH" |
+                          permits$OWNER == "PUBLIC FACILITIES COMM" |
+                          permits$OWNER== "BOSTON DEVELOPMENT" |
+                          permits$OWNER== "BOSTON FIRE DEPARTMENT" | 
+                          permits$OWNER== "BOSTON HOUSING" | 
+                          permits$OWNER== "BOSTON MUNRCIPA" | 
+                          permits$OWNER== "BOSTON POLICE DEPARTMENT" | 
+                          permits$OWNER== "BOSTON PORT * S" | 
+                          permits$OWNER== "BOSTON PUBLIC HEALTH COMM" | 
+                          permits$OWNER== "BOSTON REDEVELO" | 
+                          permits$OWNER== "BOSTON REDEVELOPMENT AUTH" | 
+                          permits$OWNER== "BOSTON REDEVELP" | 
+                          permits$OWNER== "CITY OF BOSTON" | 
+                          permits$OWNER== "CITY OF BOSTON - DND" | 
+                          permits$OWNER== "CITY OF BOSTON - PUB FAC " | 
+                          permits$OWNER== "CITY OF BOSTON (REO)" | 
+                          permits$OWNER== "CITY OF BOSTON BY FCL" | 
+                          permits$OWNER== "CITY OF BOSTON PROP MGMT DEPT" | 
+                          permits$OWNER== "CITY OF BOSTON-GEORGE WHITE FUND" | 
+                          permits$OWNER== "COMMONWLTH OF M" | 
+                          permits$OWNER== "COMMWLTH OF MAS" | 
+                          permits$OWNER== "M B T A" | 
+                          permits$OWNER== "MASS BAY TRANSP" | 
+                          permits$OWNER== "MASS BAY TRANSPORTATION AUTH" | 
+                          permits$OWNER== "MASS PORT AUTHO" | 
+                          permits$OWNER== "MASS PORT AUTHORITY" | 
+                          permits$OWNER== "MASS TURNPIKE A" | 
+                          permits$OWNER== "MASS TURNPIKE AUTHORITY" | 
+                          permits$OWNER== "MASSACHUSETTS BAY TRANS AUTH" | 
+                          permits$OWNER== "MASSACHUSETTS PORT AUTHORITY" | 
+                          permits$OWNER== "MASSPORT AUTHOR" | 
+                          permits$OWNER== "MBTA" | 
+                          permits$OWNER== "MSS PORT AUTHOR" | 
+                          permits$OWNER== "COMMMONWEALTH O" | 
+                          permits$OWNER== "COMMONWEALTH FL" | 
+                          permits$OWNER== "COMMONWEALTH OF" | 
+                          permits$OWNER== "UNITED STATES OF AMER" | 
+                          permits$OWNER== "FEDERAL HOME LOAN MORTGAGE" | 
+                          permits$OWNER== "FEDERAL HOME LOAN MTG CORP" | 
+                          permits$OWNER== "FEDERAL MORTGAGE ASSOC" | 
+                          permits$OWNER== "FEDERAL NATIONAL MORTGAGE ASSO" | 
+                          permits$OWNER== "FEDERAL NATIONAL MTG ASSOC",1,0)
 
 ##“Civic” Variable
-permits$civic<-ifelse(permits$OWNER== "BOSTON PUBLIC LIBRARY" | permits$OWNER== "CHILDRENS MUSEU" | permits$OWNER== "CHILDRENS WORLD EDUCATIONAL" | permits$OWNER== "INSTITUTE OF CO" | permits$OWNER== "ISABELLA GARDNE" | permits$OWNER== "ISABELLA STEWAR" | permits$OWNER== "MUSEUM OF FINE " | permits$OWNER== "MUSEUM OF FINE ARTS" | permits$OWNER== "THE MUSEUM OF AFRICAN" | permits$OWNER== "MUSEUM OF AFRO AMER HISTORY" | permits$OWNER== "MUSEUM PROPERTI" | permits$OWNER== "R F KENNEDY GREENWAY CONSERVAN" | permits$OWNER== "BLACKSTONE PARK" | permits$OWNER== "BOSTON COMMUNITY CENTERS", 1,0)
+permits$civic<-ifelse(permits$OWNER== "BOSTON PUBLIC LIBRARY" | permits$OWNER== "CHILDRENS MUSEU" | permits$OWNER== "CHILDRENS WORLD EDUCATIONAL" | permits$OWNER== "INSTITUTE OF CO" | permits$OWNER== "ISABELLA GARDNE" | permits$OWNER== "ISABELLA STEWAR" | permits$OWNER== "MUSEUM OF FINE" | permits$OWNER== "MUSEUM OF FINE ARTS" | permits$OWNER== "THE MUSEUM OF AFRICAN" | permits$OWNER== "MUSEUM OF AFRO AMER HISTORY" | permits$OWNER== "MUSEUM PROPERTI" | permits$OWNER== "R F KENNEDY GREENWAY CONSERVAN" | permits$OWNER== "BLACKSTONE PARK" | permits$OWNER== "BOSTON COMMUNITY CENTERS", 1,0)
 
 ##Creating Industry Category Variable 
 permits$industrycategory<-"None"
