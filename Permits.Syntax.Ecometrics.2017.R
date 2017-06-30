@@ -117,8 +117,8 @@ for (i in c(2015:2015)){
     cbgs_agg[,c("LOCALINV_count","LOCALINV_PP","LOCALINV_DV_PP")] 
   
   # log the valuation variables
-  cbgs_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")] = 
-    log(cbgs_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")]+1)
+  #cbgs_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")] = 
+  #  log(cbgs_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")]+1)
   
   # reorder the variables and save the CSV
   cbgs_agg = cbgs_agg[,c("BG_ID_10", "numLandParcels",  
@@ -126,7 +126,7 @@ for (i in c(2015:2015)){
                          "ADD_count","ADD_PP","ADD_DV_PP","RENO_count","RENO_PP","RENO_DV_PP", 
                          "MAJORDEV_count","MAJORDEV_PP","MAJORDEV_DV_PP","LOCALINV_count","LOCALINV_PP","LOCALINV_DV_PP", 
                          "TOTAL_count","TOTAL_PP","TOTAL_DV_PP", 
-                         "Public_DV")]
+                         "Public_DV_PP")]
 
   write.csv(cbgs_agg,paste(c(cbgEcometricsPath,i,"/",cbgEcometricsName,".",i,".csv"),collapse=""),row.names=F)
   
@@ -140,7 +140,8 @@ for (i in c(2015:2015)){
   
   # change names for the shp
   names(cbgs_agg) = c("BG_ID_10", "nLP","NC_c","NC_PP", "NC_DV", "D_c",  "D_PP" , "D_DV",
-                       "A_c", "A_PP","A_DV","R_c", "R_PP","R_DV","MD_c","MD_PP","MD_DV",   "LI_c","LI_PP","LI_DV")
+                       "A_c", "A_PP","A_DV","R_c", "R_PP","R_DV","MD_c","MD_PP","MD_DV",   "LI_c","LI_PP","LI_DV","T_c","T_PP","T_DV", 
+                      "P_DV")
   ecom_bgs_shp = merge(bgs_shp,cbgs_agg,by="BG_ID_10",all.x=T)
   # save the shp
   writeOGR(ecom_bgs_shp, paste(c(cbgEcometricsPath,i,"/"),collapse=""),paste(cbgEcometricsName,i,sep="."),driver="ESRI Shapefile",overwrite_layer=TRUE)
@@ -176,15 +177,15 @@ for (i in c(2015:2015)){
     cts_agg[,c("LOCALINV_count","LOCALINV_PP","LOCALINV_DV_PP")] 
   
   # log the valuation variables
-  cts_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")] = 
-    log(cts_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")]+1)
+  #cts_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")] = 
+  #  log(cts_agg[,c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","LOCALINV_DV_PP","MAJORDEV_DV_PP","TOTAL_DV_PP","Public_DV_PP")]+1)
   
   cts_agg = cts_agg[,c("CT_ID_10", "numLandParcels",  
                          "NEWCON_count", "NEWCON_PP","NEWCON_DV_PP", "DEMO_count", "DEMO_PP", "DEMO_DV_PP",
                          "ADD_count","ADD_PP","ADD_DV_PP","RENO_count","RENO_PP","RENO_DV_PP", 
                          "MAJORDEV_count","MAJORDEV_PP","MAJORDEV_DV_PP","LOCALINV_count","LOCALINV_PP","LOCALINV_DV_PP", 
                          "TOTAL_count","TOTAL_PP","TOTAL_DV_PP", 
-                         "Public_DV")]
+                         "Public_DV_PP")]
   
   write.csv(cts_agg,paste(c(ctEcometricsPath,i,"/",ctEcometricsName,".",i,".csv"),collapse=""),row.names=F)
   assign(paste("cts_agg",i,sep="_"), cts_agg)
@@ -196,7 +197,8 @@ for (i in c(2015:2015)){
   
   # rename for shape file
   names(cts_agg) = c("CT_ID_10",  "nLP","NC_c","NC_PP", "NC_DV", "D_c",  "D_PP" , "D_DV",
-                     "A_c", "A_PP","A_DV","R_c", "R_PP","R_DV","MD_c","MD_PP","MD_DV",   "LI_c","LI_PP","LI_DV")
+                     "A_c", "A_PP","A_DV","R_c", "R_PP","R_DV","MD_c","MD_PP","MD_DV",   "LI_c","LI_PP","LI_DV","T_c","T_PP","T_DV", 
+                     "P_DV")
   ecom_cts_shp = merge(cts_shp, cts_agg, by = "CT_ID_10",all.x=T)
   writeOGR(ecom_cts_shp, paste(c(ctEcometricsPath,i,"/"),collapse=""),paste(ctEcometricsName,i,sep="."),driver="ESRI Shapefile",overwrite_layer=TRUE)
  
@@ -214,21 +216,4 @@ writeOGR(cbgs_agg_long_shp, paste(c(ctEcometricsPath,"Long","/"),collapse=""),pa
 # write longitudinal CT 
 write.csv(cts_agg_long,paste(c(ctEcometricsPath,"Long/",ctEcometricsName,".Long.csv"),collapse=""),row.names=F)
 writeOGR(cts_agg_long_shp, paste(c(ctEcometricsPath,"Long/"),collapse=""),paste(ctEcometricsName,"Long",sep="."),driver="ESRI Shapefile",overwrite_layer=TRUE)
-
-
-
-censusData15 = read.csv("Documents/School/Thesis/BNS/Data files/Census/censusTractData_15d_10b.csv",stringsAsFactors=F)
-censusData15 = rename(censusData15, CT_ID_10 = Id2, medHHIncome15 = medHHIncome, pOwnOccHUs15 = pOwnOccHUs, medianHousingValue15 = medianHousingValue)
-typeData = read.csv("/Users/henrygomory/Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Tracts/Tracts_Boston_2010_BARI.csv",stringsAsFactors=F)
-
-##----
-
-cts_agg_2015 = merge(cts_agg_2015,censusData15,by="CT_ID_10",all.x=T)
-cts_agg_2015 = merge(cts_agg_2015,typeData[,c("GEOID10","Type")],by="CT_ID_10",all.x=T)
-for (var in c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","MAJORDEV_DV_PP","LOCALINV_DV_PP","TOTAL_DV_PP")) {
-  print(var)
-  print(summary(lm(paste(var,"medHHIncome15 + pOwnOccHUs15 + medianHousingValue15",sep="~"),data=cts_agg_2015[cts_agg_2015$Type=="R",])))
-}
-
-cor(cts_agg_2015[ cts_agg_2015$Type=="R",c("NEWCON_DV_PP","DEMO_DV_PP","ADD_DV_PP","RENO_DV_PP","MAJORDEV_DV_PP","LOCALINV_DV_PP","TOTAL_DV_PP")])
 

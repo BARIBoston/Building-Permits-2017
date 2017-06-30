@@ -50,7 +50,7 @@ permits$lat = as.numeric(temp[,2])
 rm(temp)
 
 
-permits_PIGI = placeInGI(df=permits,IDConnectorPath = ID_walkover_path,fuzzyMatching = F,
+permits = placeInGI(df=permits,IDConnectorPath = ID_walkover_path,fuzzyMatching = F,
                     landParcelsPath = landParcels_path,landParcelsShpName = landParcelsShpName,landParcelsShpPath=landParcelsShpPath,
                     roadsPath = roadsCSVPath,roadsShpPath = roadsShpPath,roadsShpName = roadsShpName,
                     blkShpPath =blkShpPath,blkShpName=blkShpName,bgShpPath=bgShpPath,bgShpName=bgShpName,ctShpPath=ctShpPath,ctShpName=ctShpName )
@@ -70,11 +70,6 @@ sum(!is.na(permits$CT_ID_10))/nrow(permits)
 
 ############### categorizing permit types ###########################
 
-#this is obviously not the most efficient way to do these categorizations, 
-#but it is split up and then recombined like this to better see the sources ofthe categorizations
-#1: my categorization based on article
-#2: from students' code
-permits = permits
 permits$PermitTypeDescr = trim(str_replace_all(permits$PermitTypeDescr,"\xe4\xf3\xf1",""))
 
 
@@ -148,7 +143,7 @@ permits$reno<-ifelse(!NEWCON & !DEMO & !ADD & RENO, 1,0)
 permits$specialevents<-ifelse(permits$PermitTypeDescr== "BFD Special Effects/Fireworks" | permits$PermitTypeDescr== "BFD General Permit" | permits$PermitTypeDescr== "Public Event" | permits$PermitTypeDescr== "BFDTemporary Place of Assembly" | permits$PermitTypeDescr== "BFD Tent with Assembly" | permits$PermitTypeDescr== "Use of Premises" | permits$PermitTypeDescr== "BFD Abandon Undergrd Storage" | permits$PermitTypeDescr== "BFD Alter Stationary Portable" |  permits$PermitTypeDescr== "BFD Blasting Permit" |  permits$PermitTypeDescr== "BFD Maintain Undergrd Storage" | permits$PermitTypeDescr== "BFD Temporary Out of Services" | permits$PermitTypeDescr== " BFD Use of Candles in a Place" | permits$PermitTypeDescr== "Certificate of Compliance", 1,0)
 
 #owner var
-permits$OWNER<-toupper(trim(permits$OWNER)
+permits$OWNER<-toupper(trim(permits$OWNER))
 
 ##“Upper Education” Variable
 permits$uppereducation<-ifelse(permits$OWNER== "ART INSTITUTE O" | permits$OWNER== "THE NORTHEASTER" | permits$OWNER== "ART INSTITUTE OF BOSTON" | permits$OWNER== "BARNES & NOBEL-BOSTON UNIVERSITY" | permits$OWNER== "BOSTON ARCHITEC" | permits$OWNER== "BOSTON ARCHITECT COLLEGE" | permits$OWNER== "BOSTON COLLEGE" | permits$OWNER== "BOSTON COLLEGE PURCHASING DEPT" | permits$OWNER== "BOSTON UNIVERSI" | permits$OWNER== "BOSTON UNIVERSITY TRSTS" | permits$OWNER== "BOSTON UNIVERSITY TRSTS OF" | permits$OWNER== "BOSTON UNIVRSTY TRSTS OF" | permits$OWNER== "BOSTON UNV PHYSICAL PLANT" | permits$OWNER== "EMMANUEL COLLEG" | permits$OWNER== "HARVARD CLUB OF" | permits$OWNER== "HARVARD COLL PR" | permits$OWNER== "HARVARD COLLEGE" | permits$OWNER== "HARVARD COLLEGE PRES/FELLOWS" | permits$OWNER== "HARVARD UNIV/FAC MAINT OPERATI" | permits$OWNER== "NORTHEASTERN CONFERENCE CORP" | permits$OWNER== "NORTHEASTERN UNIV HILLEL" | permits$OWNER== "NORTHEASTERN UNIV MASS" | permits$OWNER== "NORTHEASTERN UNIVERSITY" | permits$OWNER== "SUFFOLK UNIVERS" | permits$OWNER== "WENTWORTH INSTI" | permits$OWNER== "WENTWORTH INSTITUTE" | permits$OWNER== "WENTWORTH INSTITUTE OF" | permits$OWNER== "WENTWORTH INSTITUTE OF TECH" | permits$OWNER== "WENTWOWORTH INS" | permits$OWNER== "WHEELOCK COLLEG" | permits$OWNER== "WHEELOCK COLLEGE" | permits$OWNER== "MODERN SCHOOL OF FASHION" | permits$OWNER== "N.E. COLLEGE OF OPTOMETRY" | permits$OWNER== "NEW ENG CONSERV" | permits$OWNER== "NEW ENGLAND COLLEGE OF OPTOMETRY" | permits$OWNER== "SIMMONS COLLEGE" | permits$OWNER== "HARVARD RE SERV ATTN ACCT PAY" | permits$OWNER== "HARVARD REAL ES" | permits$OWNER== "HARVARD REAL ESTATE", 1,0)
@@ -266,7 +261,7 @@ permits = rename(permits,
 varnames = c( "PermitNumber","WORKTYPE","PermitTypeDescr","DESCRIPTION","NOTES",
               "APPLICANT", "DECLARED_VALUATION","TOTAL_FEES",
               "ISSUED_DATE","EXPIRATION_DATE","STATUS","OWNER","OCCUPANCY","sq_feet", "ADDRESS", "CITY","STATE","ZIP", "Location",
-              "Property_ID","parcel_num","X","Y","GIS_ID","Land_Parcel_ID","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD",
+              "Property_ID","parcel_num","X","Y","Land_Parcel_ID","TLID","Blk_ID_10","BG_ID_10","CT_ID_10","NSA_NAME","BRA_PD",
               "newcon","addition","demo","reno","specialevents","uppereducation",
               "healthcare","religious","government","civic","industrycategory","PermitDuration")
 setdiff(names(permits),varnames)
