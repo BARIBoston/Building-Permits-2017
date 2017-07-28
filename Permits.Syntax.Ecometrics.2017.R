@@ -51,7 +51,7 @@ cbgs_agg_long_shp = merge(bgs_shp,lps_perBG,by="BG_ID_10",all.x=T)
 cts_agg_long_shp = merge(cts_shp,lps_perCT,by="CT_ID_10",all.x=T)
 
 #loops through for each year
-for (i in c(2015:2015)){
+for (i in c(2010:2017)){
   print(i)
   
   permits_sub = permits[year(permits$ISSUED_DATE)==i,]
@@ -184,8 +184,7 @@ for (i in c(2015:2015)){
                          "NEWCON_count", "NEWCON_PP","NEWCON_DV_PP", "DEMO_count", "DEMO_PP", "DEMO_DV_PP",
                          "ADD_count","ADD_PP","ADD_DV_PP","RENO_count","RENO_PP","RENO_DV_PP", 
                          "MAJORDEV_count","MAJORDEV_PP","MAJORDEV_DV_PP","LOCALINV_count","LOCALINV_PP","LOCALINV_DV_PP", 
-                         "TOTAL_count","TOTAL_PP","TOTAL_DV_PP", 
-                         "Public_DV_PP")]
+                         "TOTAL_count","TOTAL_PP","TOTAL_DV_PP", "Public_DV_PP")]
   
   write.csv(cts_agg,paste(c(ctEcometricsPath,i,"/",ctEcometricsName,".",i,".csv"),collapse=""),row.names=F)
   assign(paste("cts_agg",i,sep="_"), cts_agg)
@@ -210,7 +209,7 @@ for (i in c(2015:2015)){
   
 
 # write longitudinal CBG 
-write.csv(cbgs_agg_long,paste(c(cbgEcometricsPath,"Long","/",ctEcometricsName,".Long.csv"),collapse=""),row.names=F)
+write.csv(cbgs_agg_long,paste(c(cbgEcometricsPath,"Long","/",cbgEcometricsName,".Long.csv"),collapse=""),row.names=F)
 writeOGR(cbgs_agg_long_shp, paste(c(ctEcometricsPath,"Long","/"),collapse=""),paste(ctEcometricsName,"Long",sep="."),driver="ESRI Shapefile",overwrite_layer=TRUE)
 
 # write longitudinal CT 

@@ -11,6 +11,8 @@ roadsCSVPath  = "Documents/Research/BARI/Geographic Infrastructure/Geographical 
 roadsShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Roads 2015/"
 roadsShpName = "roads_updated"
 
+samPath = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Geographical Infrastructure 2017/sam_wGeos.csv"
+
 blkShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Blocks/"
 blkShpName = "Blocks_Boston_2010_BARI"
 
@@ -27,9 +29,6 @@ permits2017_path = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Buil
 
 #---- READ IN FILES ----
 permits = read.csv(permits_path, stringsAsFactors=F)
-IDconnector = read.csv(ID_walkover_path, stringsAsFactors=F)
-properties = read.csv(properties_path, stringsAsFactors=F)
-landParcels = read.csv(landParcels_path,stringsAsFactors=F)
 
 
 #---- ADDING GEOGRAPHICAL DATA BASED ON ID ----
@@ -50,11 +49,12 @@ permits$lat = as.numeric(temp[,2])
 rm(temp)
 
 
-permits = placeInGI(df=permits,IDConnectorPath = ID_walkover_path,fuzzyMatching = F,
+permits_ = placeInGI(df=permits,IDConnectorPath = ID_walkover_path,fuzzyMatching = F,fuzzyMatchDBPath = "",
                     landParcelsPath = landParcels_path,landParcelsShpName = landParcelsShpName,landParcelsShpPath=landParcelsShpPath,
-                    roadsPath = roadsCSVPath,roadsShpPath = roadsShpPath,roadsShpName = roadsShpName,
+                    roadsPath = roadsCSVPath,roadsShpPath = roadsShpPath,roadsShpName = roadsShpName,samPath = samPath,
                     blkShpPath =blkShpPath,blkShpName=blkShpName,bgShpPath=bgShpPath,bgShpName=bgShpName,ctShpPath=ctShpPath,ctShpName=ctShpName )
 
+sum(!is.na(permits$Land_Parcel_ID))/nrow(permits)
 sum(is.na(permits$X))
 sum(!is.na(permits$X))/nrow(permits)
 sum(is.na(permits$BG_ID_10))
