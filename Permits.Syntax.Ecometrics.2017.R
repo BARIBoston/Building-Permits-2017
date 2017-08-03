@@ -1,5 +1,6 @@
 #---- individual-specific: set path to BARI Google Drive
 BARIDrive_path <- "/Users/justin/Google Drive/BARI/BARI Research Team Data Library/"
+BARIDrive_path <- "~/Google Drive/BARI/BARI Research Team Data Library/"
 
 #---- packages
 library(rgdal)
