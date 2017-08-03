@@ -1,31 +1,45 @@
-#---- INPUT PATHS ----
-permits_path = "/Users/henrygomory/Downloads/buildingpermits.csv"
-ID_walkover_path = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Geographical Infrastructure 2017/IDConnector.2017.csv"
-properties_path = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Geographical Infrastructure 2017/Properties.2017.csv"
+#---- individual-specific: set path to BARI Google Drive
+BARIDrive_path <- "/Users/justin/Google Drive/BARI/BARI Research Team Data Library/"
 
-landParcels_path = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Geographical Infrastructure 2017/LandParcels.2017.csv"
-landParcelsShpPath = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Geographical Infrastructure 2017/LandParcels.2017.shp/"
+#---- packages
+library(lubridate)
+
+#### Functions from stable versions of "HG-functions" in GDrive:
+## NB: these all require additional packages be installed
+source(paste0(BARIDrive_path,"/HG-Functions/Cleaning_functions_20170801.R"))
+source(paste0(BARIDrive_path,"/HG-Functions/Geocoding_functions_20170801.R"))
+source(paste0(BARIDrive_path,"/HG-Functions/Helper_functions_20170801.R"))
+
+
+#---- INPUT PATHS ----
+project_path <- "Permits/"
+permits_path = paste0(BARIDrive_path,project_path,"Data/buildingpermits20170719.csv")
+ID_walkover_path = paste0(BARIDrive_path,"GeoInfrastructure2017/IDConnector.2017.csv")
+properties_path = paste0(BARIDrive_path,"/GeoInfrastructure2017/Properties.2017.csv")
+
+landParcels_path = paste0(BARIDrive_path,"GeoInfrastructure2017/LandParcels.2017.csv")
+landParcelsShpPath = (paste0(BARIDrive_path,"GeoInfrastructure2017/LandParcels.2017/"))
 landParcelsShpName = "LandParcels.2017"
 
-roadsCSVPath  = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Roads 2015/roads_updated.csv"
-roadsShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Roads 2015/"
+roadsCSVPath  = paste0(BARIDrive_path,"GeoInfrastructure2017/roads_updated.csv")
+roadsShpPath = (paste0(BARIDrive_path,"GeoInfrastructure2017/roads_updated/"))
 roadsShpName = "roads_updated"
 
-samPath = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Geographical Infrastructure 2017/sam_wGeos.csv"
+samPath = paste0(BARIDrive_path,"GeoInfrastructure2017/sam_wGeos.csv")
 
-blkShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Blocks/"
-blkShpName = "Blocks_Boston_2010_BARI"
+blkShpPath = (paste0(BARIDrive_path,"GeoInfrastructure2017/Blocks_Boston_2010_BARI/"))
+blkShpName = "Blocks_Boston BARI"
 
-bgShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Block Groups 2015/"
+bgShpPath = (paste0(BARIDrive_path,"GeoInfrastructure2017/Block Groups 2010 BARI/"))
 bgShpName = "Census Block Groups"
 
-ctShpPath = "Documents/Research/BARI/Geographic Infrastructure/Geographical Infrastructure 2015/Tracts/"
-ctShpName = "Tracts_Boston_2010_BARI"
+ctShpPath = (paste0(BARIDrive_path,"GeoInfrastructure2017/Tracts_Boston_2010_BARI/"))
+ctShpName = "Tracts_Boston BARI"
 
 
 
 #---- OUTPUT PATHS ----
-permits2017_path = "/Users/henrygomory/Documents/Research/BARI/Git/New-BARI/Building Permits 2017/Permits.Records.2017.csv"
+permits2017_path = paste0(BARIDrive_path,project_path,"Data/Permits.Records.Geocoded.20170803.csv")
 
 #---- READ IN FILES ----
 permits = read.csv(permits_path, stringsAsFactors=F)
@@ -49,7 +63,7 @@ permits$lat = as.numeric(temp[,2])
 rm(temp)
 
 
-permits_ = placeInGI(df=permits,IDConnectorPath = ID_walkover_path,fuzzyMatching = F,fuzzyMatchDBPath = "",
+permits = placeInGI(df=permits,IDConnectorPath = ID_walkover_path,fuzzyMatching = F,fuzzyMatchDBPath = "",
                     landParcelsPath = landParcels_path,landParcelsShpName = landParcelsShpName,landParcelsShpPath=landParcelsShpPath,
                     roadsPath = roadsCSVPath,roadsShpPath = roadsShpPath,roadsShpName = roadsShpName,samPath = samPath,
                     blkShpPath =blkShpPath,blkShpName=blkShpName,bgShpPath=bgShpPath,bgShpName=bgShpName,ctShpPath=ctShpPath,ctShpName=ctShpName )
